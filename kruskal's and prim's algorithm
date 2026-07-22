@@ -1,0 +1,146 @@
+import heapq
+
+
+# =====================================================================
+# 1. Kruskal's Algorithm (Using Disjoint Set Union - DSU)
+# =====================================================================
+class DisjointSet:
+
+    def __init__(self, vertices):
+        self.parent = {v: v for v in vertices}
+        self.rank = {v: 0 for v in vertices}
+
+    def find(self, item):
+        if self.parent[item] == item:
+            return item
+        # Path compression optimization
+        self.parent[item] = self.find(self.parent[item])
+        return self.parent[item]
+
+    def union(self, set1, set2):
+        root1 = self.find(set1)
+        root2 = self.find(set2)
+
+        if root1 != root2:
+            # Union by rank optimization
+            if self.rank[root1] > self.rank[root2]:
+                self.parent[root2] = root1
+            elif self.rank[root1] < self.rank[root2]:
+                self.parent[root1] = root2
+            else:
+                self.parent[root2] = root1
+                self.rank[root1] += 1
+            return True
+        return False
+
+
+def kruskals_mst(vertices, edges):
+    """
+    Sorts all edges by weight and builds the MST avoiding cycle formations.
+    Edges format: (weight, u, v)
+    """
+    # Sort edges strictly by weight ascending
+    sorted_edges = sorted(edges, key=lambda item: item[0])
+    dsu = DisjointSet(vertices)
+    mst = []
+    total_weight = 0
+
+    for weight, u, v in sorted_edges:
+        # If u and v do not belong to the same set, add edge to MST
+        if dsu.union(u, v):
+            mst.append((u, v, weight))
+            total_weight += weight
+            if len(mst) == len(vertices) - 1:
+                break
+
+    return mst, total_weight
+
+
+# =====================================================================
+# 2. Prim's Algorithm (Using Priority Queue / Min-Heap)
+# =====================================================================
+def prims_mst(vertices, edges):
+    """
+    Grows the MST outward from an initial starting node using a priority queue.
+    """
+    # Build an adjacency list mapping: node -> [(weight, neighbor), ...]
+    adj_list = {v: [] for v in vertices}
+    for weight, u, v in edges:
+        adj_list[u].append((weight, v))
+        adj_list[v].append((weight, u))
+
+    start_node = vertices[0] if vertices else None
+    if not start_node:
+        return [], 0
+
+    visited = set()
+    min_heap = []
+    mst = []
+    total_weight = 0
+
+    # Format in heap: (weight, current_node, parent_node)
+    visited.add(start_node)
+    for weight, neighbor in adj_list[start_node]:
+        heapq.heappush(min_heap, (weight, neighbor, start_node))
+
+    while min_heap and len(visited) < len(vertices):
+        weight, curr, parent = heapq.heappop(min_heap)
+
+        if curr in visited:
+            continue
+
+        visited.add(curr)
+        mst.append((parent, curr, weight))
+        total_weight += weight
+
+        for next_weight, neighbor in adj_list[curr]:
+            if neighbor not in visited:
+                heapq.heappush(min_heap, (next_weight, neighbor, curr))
+
+    return mst, total_weight
+
+
+# =====================================================================
+# 3. Dynamic Execution and Comparison via User Input
+# =====================================================================
+if __name__ == "__main__":
+    print("--- MST Algorithm Runner (Kruskal vs Prim) ---")
+    try:
+        # Take vertex list input (e.g., A B C D)
+        v_input = input("Enter space-separated vertex names: ")
+        vertices_list = v_input.strip().split()
+
+        if not vertices_list:
+            raise ValueError("Vertices list cannot be empty.")
+
+        # Take edge structural inputs
+        num_edges = int(input("Enter the total number of edges: "))
+        edges_list = []
+
+        print("Enter each edge as: Source Destination Weight (e.g., A B 4)")
+        for i in range(num_edges):
+            u, v, w = input(f"Edge {i+1}: ").strip().split()
+            edges_list.append((int(w), u, v))
+
+        # Execute Kruskal's Algorithm
+        k_mst, k_weight = kruskals_mst(vertices_list, edges_list)
+
+        # Execute Prim's Algorithm
+        p_mst, p_weight = prims_mst(vertices_list, edges_list)
+
+        # Render output metrics side-by-side
+        print("\n" + "=" * 50)
+        print(" KRUSKAL'S ALGORITHM RESULTS ")
+        print("=" * 50)
+        print(f"Edges picked (U -> V @ Weight): {k_mst}")
+        print(f"Total MST Weight: {k_weight}")
+
+        print("\n" + "=" * 50)
+        print(" PRIM'S ALGORITHM RESULTS ")
+        print("=" * 50)
+        print(f"Edges picked (Parent -> Target @ Weight): {p_mst}")
+        print(f"Total MST Weight: {p_weight}")
+        print("=" * 50)
+
+    except (ValueError, IndexError):
+        print("\nInvalid formatting input parsed. Ensure matching types.")
